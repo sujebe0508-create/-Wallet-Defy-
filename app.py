@@ -39,6 +39,35 @@ st.markdown("""
         margin-top: 1rem;
         margin-bottom: 1rem;
     }
+    /* 위험도 배경 애니메이션 */
+    @keyframes dangerPulse {
+        0%   { background-color: var(--bg-start); }
+        50%  { background-color: var(--bg-end); }
+        100% { background-color: var(--bg-start); }
+    }
+    .danger-bg {
+        animation: dangerPulse 2s ease-in-out infinite;
+        padding: 1.2rem 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-align: center;
+        transition: all 0.5s ease;
+    }
+    /* 이유 작성 박스 */
+    .reason-box {
+        background: linear-gradient(135deg, #fff8f8, #fff0f0);
+        border: 2px solid #D32F2F;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    .char-counter {
+        font-size: 0.85rem;
+        text-align: right;
+        margin-top: 0.3rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -154,7 +183,36 @@ with tab1:
             )
             st.plotly_chart(fig_radar, use_container_width=True)
             
-            # 강제 냉각 조치
+            # ── 위험도 배경색 애니메이션 (danger_score 기반) ──
+            # 위험도에 따라 색상 강도 결정
+            if danger_score >= 90:
+                bg_start = "rgba(255,200,200,0.6)"
+                bg_end   = "rgba(220,50,50,0.45)"
+                label_color = "#B71C1C"
+                level_text = "🔴 CRITICAL — 지금 당장 뒤로가기를 누르십시오"
+            elif danger_score >= 75:
+                bg_start = "rgba(255,220,180,0.5)"
+                bg_end   = "rgba(230,100,30,0.4)"
+                label_color = "#E65100"
+                level_text = "🟠 HIGH RISK — 위험 신호가 감지되었습니다"
+            else:
+                bg_start = "rgba(255,245,180,0.5)"
+                bg_end   = "rgba(220,180,30,0.35)"
+                label_color = "#F57F17"
+                level_text = "🟡 MODERATE — 재고해 보십시오"
+
+            st.markdown(
+                f"""<div class='danger-bg'
+                    style='--bg-start:{bg_start}; --bg-end:{bg_end}; color:{label_color};'>
+                    {level_text}<br>
+                    <span style='font-size:0.85rem; font-weight:400;'>
+                    AI 위험도 {danger_score}% · 예산 타격 {budget_impact_pct:.1f}% · 노동 {required_hours:.1f}시간 소모
+                    </span>
+                </div>""",
+                unsafe_allow_html=True
+            )
+
+            # ── 강제 냉각 조치 ──
             st.write("---")
             st.markdown("#### ⏳ 강제 냉각 시스템 활성화")
             st.info("비합리적 뇌 회로를 차단하기 위해 10초간 구매 확정을 보류합니다.")
@@ -163,7 +221,55 @@ with tab1:
             for seconds in range(10, 0, -1):
                 placeholder.metric(label="이성이 돌아오기까지", value=f"{seconds}초")
                 time.sleep(1)
-            placeholder.success("🔓 냉각 종료. 진단 결과를 보고도 사야겠다면, 사십시오.")
+            placeholder.success("🔓 냉각 종료.")
+
+            # ── 300자 구매 이유 강제 작성 ──
+            st.write("---")
+            st.markdown("#### ✍️ 최후 관문: 구매 정당화 진술서")
+            st.markdown(
+                """<div class='reason-box'>
+                <b>🚨 마지막 저지선입니다.</b><br>
+                진단 결과에도 불구하고 구매를 강행하려면,
+                <b>이 물건이 당신의 삶에 반드시 필요한 이유를 최소 300자 이상</b> 작성하십시오.<br>
+                <span style='color:#888; font-size:0.85rem;'>이 과정은 '정당화의 고통(Justification Friction)'을 통해 충동 구매를 억제하는
+                행동경제학적 개입 장치입니다.</span>
+                </div>""",
+                unsafe_allow_html=True
+            )
+
+            reason_key = f"reason_{len(st.session_state['history'])}"
+            reason = st.text_area(
+                "구매 이유 (최소 300자)",
+                key=reason_key,
+                height=160,
+                placeholder="이 물건이 나의 삶에 반드시 필요한 이유를 구체적으로 서술하십시오..."
+            )
+            char_count = len(reason)
+            remaining_chars = max(0, 300 - char_count)
+
+            if char_count == 0:
+                st.markdown(
+                    "<div class='char-counter' style='color:#999;'>0 / 300자</div>",
+                    unsafe_allow_html=True
+                )
+            elif remaining_chars > 0:
+                st.markdown(
+                    f"<div class='char-counter' style='color:#E65100;'>{char_count} / 300자 — 아직 {remaining_chars}자 더 써야 합니다.</div>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"<div class='char-counter' style='color:#388E3C;'>✅ {char_count}자 작성 완료</div>",
+                    unsafe_allow_html=True
+                )
+
+            if char_count >= 300:
+                if st.button("💳 그래도 구매하겠습니다 (최종 확인)"):
+                    st.balloons()
+                    st.warning("⚠️ 구매를 진행하셨군요. 후회는 없으시길 바랍니다. 이 결정이 기록에 남았습니다.")
+            else:
+                st.button("💳 그래도 구매하겠습니다 (최종 확인)", disabled=True,
+                          help=f"구매 이유를 {300 - char_count}자 더 작성해야 활성화됩니다.")
 
 with tab2:
     st.markdown("### 📈 기회비용 시뮬레이터")
@@ -217,4 +323,4 @@ with tab3:
 # ----------------- 하단 푸터 -----------------
 st.write("")
 st.write("")
-st.caption("© 2026 Defy.ai - 한국외대 기계학습 프로젝트 (Simulated)")
+st.caption("© 2026 Defy.ai - 숭실대학교 IT대학 X 경제학과 행동교정 융합 프로젝트 (Simulated)")
