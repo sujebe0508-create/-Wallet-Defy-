@@ -323,4 +323,4 @@ with tab3:
 # ----------------- 하단 푸터 -----------------
 st.write("")
 st.write("")
-st.caption("© 2026 Defy.ai - 숭실대학교 IT대학 X 경제학과 행동교정 융합 프로젝트 (Simulated)")
+st.caption("© 2026 Defy.ai - 한국외대 기계학습 프로젝트 (Simulated)")
