@@ -274,37 +274,126 @@ with tab1:
 with tab2:
     st.markdown("### 📈 기회비용 시뮬레이터")
     st.write("만약 이 돈들을 소비하지 않고 **연 8% 수익률의 인덱스 펀드**에 투자했다면?")
-    
+
     if len(st.session_state['history']) == 0:
         st.info("먼저 '실시간 소비 심사' 탭에서 분석을 진행해주세요.")
     else:
-        # 지금까지 누적된 소비액
         total_spent = sum([item['가격'] for item in st.session_state['history']])
-        
-        years = list(range(1, 21)) # 1년~20년
+
+        years = list(range(1, 21))
         future_values = [total_spent * (1.08 ** y) for y in years]
-        
-        df_fv = pd.DataFrame({
-            "투자 기간 (년)": years,
-            "예상 자산 가치 (원)": future_values
-        })
-        
+        df_fv = pd.DataFrame({"투자 기간 (년)": years, "예상 자산 가치 (원)": future_values})
         fig_line = px.line(df_fv, x="투자 기간 (년)", y="예상 자산 가치 (원)", markers=True,
                            title=f"현재 소비 누적액 {total_spent:,}원의 복리 마법",
                            color_discrete_sequence=['#1A3668'])
         st.plotly_chart(fig_line, use_container_width=True)
-        
-        # 예산 파이 차트
+
         st.markdown("### 🍩 현재 예산 타격도")
         remaining_budget = max(0, monthly_budget - total_spent)
-        
         fig_pie = px.pie(
-            values=[total_spent, remaining_budget], 
+            values=[total_spent, remaining_budget],
             names=['총 지출(심사 내역)', '남은 예산'],
             hole=0.4,
             color_discrete_sequence=['#D32F2F', '#4CAF50']
         )
         st.plotly_chart(fig_pie, use_container_width=True)
+
+    # ── 30년 충동구매 습관 손실 시뮬레이션 ──
+    st.write("---")
+    st.markdown("### 💀 30년 노동 손실 시뮬레이션")
+    st.markdown(
+        "충동구매가 **습관**이 되면 어떻게 될까요? "
+        "매달 이 금액을 소비하는 시나리오 vs 투자하는 시나리오를 비교합니다."
+    )
+
+    # 입력
+    sim_col1, sim_col2 = st.columns(2)
+    with sim_col1:
+        last_price = st.session_state['history'][-1]['가격'] if st.session_state['history'] else 150000
+        monthly_impulse = st.number_input(
+            "월 충동구매 예상액 (원)",
+            min_value=10000, max_value=2000000,
+            value=int(last_price), step=10000,
+            help="마지막으로 분석한 물건 가격이 기본값으로 설정됩니다."
+        )
+    with sim_col2:
+        annual_return = st.slider("가정 연 수익률 (%)", min_value=4, max_value=12, value=8)
+
+    months = list(range(0, 361))  # 0~360개월 (30년)
+    cumulative_spend = [monthly_impulse * m for m in months]
+
+    # 복리 투자 시뮬레이션 (월 복리)
+    monthly_rate = annual_return / 100 / 12
+    invest_value = [0.0]
+    for _ in range(360):
+        invest_value.append(invest_value[-1] * (1 + monthly_rate) + monthly_impulse)
+
+    df_sim = pd.DataFrame({
+        "기간 (개월)": months,
+        "💸 소비만 했을 경우 (원금 누적)": cumulative_spend,
+        "📈 투자했을 경우 (복리 가치)": invest_value,
+    })
+
+    fig_30 = go.Figure()
+    fig_30.add_trace(go.Scatter(
+        x=df_sim["기간 (개월)"] / 12,
+        y=df_sim["💸 소비만 했을 경우 (원금 누적)"],
+        name="💸 소비만 했을 경우",
+        line=dict(color="#D32F2F", width=3),
+        fill='tozeroy',
+        fillcolor='rgba(211,47,47,0.08)'
+    ))
+    fig_30.add_trace(go.Scatter(
+        x=df_sim["기간 (개월)"] / 12,
+        y=df_sim["📈 투자했을 경우 (복리 가치)"],
+        name="📈 투자했을 경우",
+        line=dict(color="#1A3668", width=3),
+        fill='tozeroy',
+        fillcolor='rgba(26,54,104,0.08)'
+    ))
+
+    final_invest = invest_value[-1]
+    final_spend  = cumulative_spend[-1]
+    gap = final_invest - final_spend
+
+    # 30년 시점 annotation
+    fig_30.add_annotation(
+        x=30, y=final_invest,
+        text=f"📈 {int(final_invest/1e8):.1f}억원",
+        showarrow=True, arrowhead=2,
+        font=dict(size=13, color="#1A3668"),
+        bgcolor="rgba(255,255,255,0.85)"
+    )
+    fig_30.add_annotation(
+        x=30, y=final_spend,
+        text=f"💸 {int(final_spend/1e8):.1f}억원",
+        showarrow=True, arrowhead=2, ay=40,
+        font=dict(size=13, color="#D32F2F"),
+        bgcolor="rgba(255,255,255,0.85)"
+    )
+    fig_30.update_layout(
+        title=f"30년 후 격차: {int(gap/1e8):.1f}억원 ({int(gap/1e4):,}만원)",
+        xaxis_title="경과 연수",
+        yaxis_title="금액 (원)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=420,
+        margin=dict(l=20, r=20, t=60, b=20)
+    )
+    st.plotly_chart(fig_30, use_container_width=True)
+
+    # 충격 요약 카드
+    labor_years = final_spend / (hourly_wage * 8 * 250)  # 연 250일 근무 가정
+    r1, r2, r3 = st.columns(3)
+    r1.metric("30년간 총 소비액", f"{int(final_spend/1e4):,}만원", "습관적 충동구매 누적")
+    r2.metric("같은 돈 투자 시 자산", f"{int(final_invest/1e8):.2f}억원", f"연 {annual_return}% 복리")
+    r3.metric("소비액의 총 노동 환산", f"{labor_years:.1f}년 치 연봉",
+              f"시급 {hourly_wage:,}원 기준", delta_color="inverse")
+
+    st.error(
+        f"📌 **핵심 메시지:** 매달 {monthly_impulse:,}원의 충동구매 습관은 "
+        f"30년 후 **{int(gap/1e8):.1f}억원의 기회비용**으로 돌아옵니다. "
+        f"이것은 단순한 숫자가 아니라, 미래의 당신이 일하지 않아도 될 **{labor_years:.1f}년**입니다."
+    )
 
 with tab3:
     st.markdown("### 📂 나의 위험 행동 로그")
@@ -323,4 +412,4 @@ with tab3:
 # ----------------- 하단 푸터 -----------------
 st.write("")
 st.write("")
-st.caption("© 2026 Defy.ai - 한국외대 기계학습 프로젝트 (Simulated)")
+st.caption("© 2026 Defy.ai - 숭실대학교 IT대학 X 경제학과 행동교정 융합 프로젝트 (Simulated)")
