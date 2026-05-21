@@ -127,11 +127,11 @@ with tab1:
             
         st.error(f"📈 충동구매 및 과소비 위험도: {danger_score}% (위험 수준)")
         st.progress(danger_score)
-            # 위험도 계산 로직 (시뮬레이션)
-            danger_score = min(99, int((budget_impact_pct * 0.6) + random.randint(20, 40)))
-            
-            # 로그 저장
-            st.session_state['history'].append({
+        # 위험도 계산 로직 (시뮬레이션)
+        danger_score = min(99, int((budget_impact_pct * 0.6) + random.randint(20, 40)))
+        
+        # 로그 저장
+        st.session_state['history'].append({
                 "시간": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "물품": item_name,
                 "가격": item_price,
