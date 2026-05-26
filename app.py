@@ -52,7 +52,7 @@ st.write("---")
 # ── 사이드바 ──
 with st.sidebar:
     st.header("⚙️ 나의 재무 & 노동 메트릭스")
-    hourly_wage    = st.number_input("나의 시급 (원)", min_value=9000, max_value=100000, value=10030, step=10)
+    hourly_wage    = st.number_input("나의 시급 (원)", min_value=9000, max_value=100000, value=10320, step=10)
     monthly_budget = st.number_input("이번 달 여유 예산 (원)", min_value=10000, max_value=5000000, value=500000, step=10000)
     st.caption("💡 입력된 데이터는 기회비용 및 예산 타격도 산출 모델에 사용됩니다.")
 # ── 탭 ──
